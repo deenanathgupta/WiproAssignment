@@ -1,45 +1,49 @@
 package com.sample.wiproassignment.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sample.wiproassignment.di.RepositoryModule
 import com.sample.wiproassignment.model.AlbumResponseModelItem
-import com.sample.wiproassignment.network.onError
-import com.sample.wiproassignment.network.onException
-import com.sample.wiproassignment.network.onSuccess
-import com.android.hilt_coroutine_retrofit_adapter_demo.repository.AlbumRepository
+import com.sample.wiproassignment.R
+import com.sample.wiproassignment.domain.GetAlbumUseCase
+import com.sample.wiproassignment.utils.hasInternetConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class AlbumViewModel @Inject constructor(
-    private val repository: AlbumRepository,
-    @RepositoryModule.IoDispatcher private val ioDispatcher: CoroutineDispatcher
-) : ViewModel() {
-    private var _albumList = MutableLiveData<List<AlbumResponseModelItem>>()
-    val albumList: LiveData<List<AlbumResponseModelItem>>
-        get() = _albumList
-
-    private var _isErrorHappen = MutableLiveData<Boolean>()
-    val isErrorHappen: LiveData<Boolean>
-        get() = _isErrorHappen
+    private val context: Application,
+    private val albumUseCase: GetAlbumUseCase
+) : AndroidViewModel(context) {
+    private val _albumViewState =
+        MutableStateFlow<AlbumViewState>(AlbumViewState.Idle)
+    val albumUiState = _albumViewState.asStateFlow()
 
     fun getAlbumList() {
-        viewModelScope.launch(ioDispatcher) {
-            val response = repository.getAlbumList()
-            response.onSuccess {
-                _albumList.postValue(it)
-            }
-            response.onError { _, _ ->
-                _isErrorHappen.postValue(true)
-            }
-            response.onException {
-                _isErrorHappen.postValue(true)
+        viewModelScope.launch {
+            if (context.hasInternetConnection().not()) {
+                _albumViewState.value = AlbumViewState.NoInternet
+            } else {
+                albumUseCase.invoke(String()).collect {
+                    _albumViewState.value = it
+                }
             }
         }
     }
+}
+
+sealed class AlbumViewState {
+    object Idle : AlbumViewState()
+    object Loading : AlbumViewState()
+    object NoInternet : AlbumViewState()
+    data class Success(val data: List<AlbumResponseModelItem>) : AlbumViewState()
+    data class Error(val errorCode: Int, val errorMessage: String?) : AlbumViewState()
+    data class Exception(val e: Throwable) : AlbumViewState()
+    fun loading() = this is Loading
+    fun noInternet() = this is NoInternet
 }

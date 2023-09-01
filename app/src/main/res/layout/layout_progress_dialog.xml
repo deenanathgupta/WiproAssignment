@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="dataLoading"
+            type="Boolean" />
+    </data>
+
+    <LinearLayout
+        android:id="@+id/progressLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#88FFFFFF"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:translationZ="@dimen/gap_16"
+        android:visibility="@{dataLoading ? View.VISIBLE : View.GONE}"
+        tools:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="@dimen/gap_72"
+            android:layout_height="@dimen/gap_72" />
+
+    </LinearLayout>
+</layout>
